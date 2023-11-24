@@ -55,7 +55,18 @@ Everything begins by identifying the spread first. When we have a database with 
 ```
 **Use Case 1**: Find topN cardinality metrics
 ```
-./bin/metric-explorer system --config example/sample.yaml --cardinality
+./bin/metric-explorer system --config example/sample.yaml --cardinality --dump-as=table
+╭───────────────────────────────────────┬─────────────╮
+│ METRIC                                │ CARDINALITY │
+├───────────────────────────────────────┼─────────────┤
+│ http_request_total                    │         111 │
+│ scrape_duration_seconds               │           1 │
+│ scrape_samples_post_metric_relabeling │           1 │
+│ scrape_samples_scraped                │           1 │
+│ scrape_series_added                   │           1 │
+│ scrape_timeout_seconds                │           1 │
+│ up                                    │           1 │
+╰───────────────────────────────────────┴─────────────╯
 ```
 **Use Case 2**: Find my top N queries in decreasing order of average running time, over past x seconds
 ```
@@ -70,7 +81,21 @@ After identifying the troublesome metric and queries, it’s important to unders
 **Use Case 1**: Find the cardinality distribution of a specific metric, along with its label values in decreasing order of cardinality contribution
 ```
 ./bin/metric-explorer explore http_request_total --config example/sample.yaml 
---cardinality --label-count=3 --dump-as=table
+--cardinality --label-count=5 --dump-as=table
+╭───────────────────┬────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ METRIC            │ HTTP_REQUEST_TOTAL │                                                                                                                                                       │
+│ CARDINALITY       │                111 │                                                                                                                                                       │
+│ LABEL             │       UNIQUE VALUE │ LABEL VALUES                                                                                                                                          │
+├───────────────────┼────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ endpoint          │                  8 │ /api/v1/label/env/values,/api/v1/label/scrape_job/values,/api/v1/label/service_name/values,/api/v1/label/handler/values,/api/v1/label/instance/values │
+│ status_code       │                  5 │ 422,500,400,200,503                                                                                                                                   │
+│ method            │                  3 │ PUT,GET,POST                                                                                                                                          │
+│ __name__          │                  1 │ http_request_total                                                                                                                                    │
+│ instance          │                  1 │ localhost:9100                                                                                                                                        │
+│ job               │                  1 │ vmagent-01                                                                                                                                            │
+│ exported_instance │                  9 │ 10.16.130.145:9100,10.16.128.122:8482,10.16.131.243:9153,10.16.131.183:8482,10.16.128.129:9100                                                        │
+│ host              │                  9 │ 10.16.130.145,10.16.128.122,10.16.131.243,10.16.131.183,10.16.128.129                                                                                 │
+╰───────────────────┴────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 **Use Case 2**: Find the last loss of signal for a metric (Supports both counter and gauge)
 ```
@@ -99,7 +124,20 @@ After finding that cardinality is the problem, we have to find/investigate which
 
 *Note*: Beyond cardinality limit **--allowed-cardinality-limit** tool automatically creates relative query; we can also control relative behavior by using flag `--filter-label`
 ```
-./bin/metric-explorer cc http_request_total --config example/sample.yaml --allowed-cardinality-limit=30000
+./bin/metric-explorer cc http_request_total --config example/sample.yaml --allowed-cardinality-limit=30000 --dump-as=table
+╭───────────────────┬────────────────────┬───────────────╮
+│ METRIC            │ HTTP_REQUEST_TOTAL │               │
+│ CARDINALITY       │                111 │               │
+│ LABEL             │       UNIQUE VALUE │ CARDINALITY % │
+├───────────────────┼────────────────────┼───────────────┤
+│ exported_instance │                  9 │            17 │
+│ host              │                  9 │            17 │
+│ endpoint          │                  8 │            37 │
+│ status_code       │                  5 │            29 │
+│ method            │                  3 │            25 │
+│ job               │                  1 │            17 │
+│ instance          │                  1 │            17 │
+╰───────────────────┴────────────────────┴───────────────╯
 ```
 **Use Case 2**: Define the label on which you want to check cardinality
 ```
