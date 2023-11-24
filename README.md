@@ -141,7 +141,20 @@ After finding that cardinality is the problem, we have to find/investigate which
 ```
 **Use Case 2**: Define the label on which you want to check cardinality
 ```
-./bin/metric-explorer cc http_request_total --config example/sample.yaml --filter-label=cluster --dump-as=table
+ ./bin/metric-explorer cc http_request_total --config example/sample.yaml --filter-label=endpoint --allowed-cardinality-limit=100 --dump-as=table 
+╭───────────────────┬──────────────────────────────────────────────────────────────────┬───────────────╮
+│ METRIC            │ HTTP_REQUEST_TOTAL{ENDPOINT="/API/V1/LABEL/SERVICE_NAME/VALUES"} │               │
+│ CARDINALITY       │                                                               16 │               │
+│ LABEL             │                                                     UNIQUE VALUE │ CARDINALITY % │
+├───────────────────┼──────────────────────────────────────────────────────────────────┼───────────────┤
+│ host              │                                                                8 │            18 │
+│ exported_instance │                                                                8 │            18 │
+│ status_code       │                                                                5 │            25 │
+│ method            │                                                                3 │            18 │
+│ endpoint          │                                                                1 │            18 │
+│ instance          │                                                                1 │            18 │
+│ job               │                                                                1 │            18 │
+╰───────────────────┴──────────────────────────────────────────────────────────────────┴───────────────╯
 ```
 **Use Case 3**: Judge the cardinality % in pairs to identify the relation between labels is 1:1, 1:M or M:N. It is very critical to understand because if it is 1:1 then it may not result in bringing the cardinality so much.
 ```
