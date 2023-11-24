@@ -4,6 +4,8 @@
 
 With the need to accommodate more granular information in metrics, the problem of high cardinality is becoming more and more natural. We talk about cardinality often, but we don’t have the right ways to explore our time-series database to find helpful information to control or improve this problem.
 
+> Read more on [what is high cardinality](https://last9.io/blog/what-is-high-cardinality/).
+
 Introducing **metric-explorer.** It provides three modes of operation:
 
 1. System(system)
@@ -51,7 +53,8 @@ Use "metric-explorer [command] --help" for more information about a command.
 ### System Mode:
 
 Everything begins by identifying the spread first. When we have a database with many metrics, it’s essential to identify the most influential metrics in the system and their usage limits.
-```
+
+```shell
 ./bin/metric-explorer system --help
 ```
 **Use Case 1**: Find topN cardinality metrics
@@ -71,7 +74,8 @@ Everything begins by identifying the spread first. When we have a database with 
 ╰───────────────────────────────────────┴─────────────╯
 ```
 **Use Case 2**: Find my top N queries in decreasing order of average running time over the past x seconds
-```
+
+```shell
 ./bin/metric-explorer system --config example/sample.yaml --top-queries --topN=3 --top-query-max-lifetime=300 --dump-as=table
 ```
 ### Explore Mode:
@@ -102,22 +106,27 @@ After identifying the troublesome metric and queries, it’s essential to unders
 ╰───────────────────┴────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 **Use Case 2**: Find the last loss of signal for a metric (Supports both counter and gauge)
-```
+
+```shell
 ./bin/metric-explorer explore http_request_total --config example/sample.yaml --loss=360000 --lag=1800
 ```
 **Use Case 3**: Find the sparseness % of a metric. Note: Sparseness here means metric is absent.
-```
+
+```shell
 ./bin/metric-explorer explore http_request_total --config example/sample.yaml --sparse=360000 --lag=1800
 ```
 **Use Case 4**: Find no. of resets that happened on a counter metric in the past x seconds
-```
+
+```shell
 ./bin/metric-explorer explore http_request_total --config example/sample.yaml --reset-counts --lag=1800
 ```
 **Use Case 5**: Find churn rate, ingestion rate, sample received, active time series, scrape interval of a metric
-```
+
+```shell
 ./bin/metric-explorer explore http_request_total --config example/sample.yaml 
 --active-timeseries --scrape-interval --ingestion-rate --sample-received --churn-rate  --lag=1800
 ```
+
 ### Cardinality Calculator Mode:
 
 After finding that cardinality is the problem, we have to find/investigate which labels are the culprit and how to go about them be dropping a few to control the problem. It’s not easy to find this information for a very high cardinality metric, and mainly, the way cardinality has been considered so far as cartesian products of count of all unique labels is not the right way to think about it.
@@ -164,9 +173,10 @@ After finding that cardinality is the problem, we have to find/investigate which
 │ instance          │                                                                1 │            18 │
 │ job               │                                                                1 │            18 │
 ╰───────────────────┴──────────────────────────────────────────────────────────────────┴───────────────╯
+```
+
+**Use Case 3**: Judge the cardinality % in pairs to identify the relation between labels is 1:1, 1:M or M:N. It is very critical to understand because if it is 1:1, it may not bring the cardinality so much.
 
 ```shell
-**Use Case 3**: Judge the cardinality % in pairs to identify the relation between labels is 1:1, 1:M or M:N. It is very critical to understand because if it is 1:1, it may not bring the cardinality so much.
-```
 ./bin/metric-explorer cc http_request_total --config example/sample.yaml --filter-label=cluster --label-count=2 --dump-as=table
 ```
