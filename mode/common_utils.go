@@ -131,10 +131,10 @@ func getHeaders(noOfLabels int, action string) table.Row {
 	}
 
 	if action == "" {
-		return table.Row{"Label", "Unique Value"}
+		return table.Row{"Label", "Cardinality %"}
 	}
 
-	return table.Row{"Label", "Unique Value", "Duplicate Labels Exists"}
+	return table.Row{"Label", "Cardinality %", "Duplicate Labels Exists"}
 }
 
 func dumpCardinalityInfoPerLabel(metric string, cardinality int64, labelInfo labelsCardinalityInfo, action, format string) {

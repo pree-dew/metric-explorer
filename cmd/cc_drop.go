@@ -17,6 +17,7 @@ var ccDropCmd = &cobra.Command{
 
 1. If any label or combination is dropped, is it going to result into duplicates.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// TODO: fix this positional arg passing across sub-commands
 		if cmd.Flags().Arg(0) == "" {
 			fmt.Println("Metric name cannot be empty for metric info mode")
 			os.Exit(1)
