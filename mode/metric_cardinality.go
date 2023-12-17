@@ -192,7 +192,7 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 	if cFlag.LabelCount == 1 {
 		dumpCardinalityInfoPerLabel(cFlag.Metric, cd.cardinality, cMap.m, action, cFlag.DumpAs)
 	} else {
-		dumpCardinalityInfoWithoutLabels(cFlag.Metric, cd.cardinality, cMap.m, action, cFlag.DumpAs)
-		dumpCardinalityPer(cFlag.Metric, cMap.m, cFlag.DumpAs)
+		dumpCardinalityInfoWithoutLabels(cFlag.Metric, cd.cardinality, cd.labelInfo, cFlag.DumpAs)
+		dumpCardinalityPer(cFlag.Metric, cMap.m, action, cFlag.DumpAs)
 	}
 }
