@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ccCmd represents the cc command
+// ccDropCmd helps in analysis of metric if drop action is selected
 var ccDropCmd = &cobra.Command{
 	Use:   "drop",
 	Short: "To provide analysis if drop action is selected",
@@ -17,7 +17,6 @@ var ccDropCmd = &cobra.Command{
 
 1. If any label or combination is dropped, is it going to result into duplicates.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Drop action")
 		if cmd.Flags().Arg(0) == "" {
 			fmt.Println("Metric name cannot be empty for metric info mode")
 			os.Exit(1)
