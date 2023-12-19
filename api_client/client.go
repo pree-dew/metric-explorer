@@ -37,10 +37,27 @@ const (
 	metricResponseTimeTempl  = ""
 )
 
+const (
+	LabelCardinalityStr = "labelCardinality"
+	DuplicatesLabelsStr = "duplicateLabels"
+)
+
 const labelCardinalityTempl = `
 count (
-	count without ( {{.LabelPair}} ) (
+	group without ( {{.LabelPair}} ) (
 		count_over_time ( {{.Metric}}[{{.Duration}}s] )
+	)
+)
+`
+
+const duplicateLabelsExistsTempl = `
+sum( group without ( {{.LabelPair}} ) (
+	count_over_time( {{.Metric}}[{{.Duration}}s] )
+	)
+) 
+	!= bool 
+sum(  count without ( {{.LabelPair}} ) (
+	count_over_time( {{.Metric}}[{{.Duration}}s] )
 	)
 )
 `
@@ -126,6 +143,12 @@ func LoadTmpl(tmplStr string) (*template.Template, error) {
 
 func createQuery(params queryParams, templ string) (string, error) {
 	var q strings.Builder
+	switch templ {
+	case LabelCardinalityStr:
+		templ = labelCardinalityTempl
+	case DuplicatesLabelsStr:
+		templ = duplicateLabelsExistsTempl
+	}
 
 	if t, err := LoadTmpl(templ); err != nil {
 		return "", err
@@ -224,12 +247,12 @@ func ScrapeInterval(v1api v1.API, metric string) (int, error) {
 	return strconv.Atoi(values[0].Value)
 }
 
-func FindCardinality(v1api v1.API, metric string, duration, offset int, lPair string) (int, error) {
+func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair string, templType string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
 	params := queryParams{Metric: metric, Duration: duration, LabelPair: lPair}
-	query, err := createQuery(params, labelCardinalityTempl)
+	query, err := createQuery(params, templType)
 	if err != nil {
 		return 0, err
 	}
