@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"metric_explorer/mode"
+	"github.com/pree-dew/metric-explorer/mode"
 
 	"github.com/spf13/cobra"
 )

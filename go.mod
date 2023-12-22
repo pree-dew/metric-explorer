@@ -1,4 +1,4 @@
-module metric_explorer
+module github.com/pree-dew/metric-explorer
 
 go 1.19
 
