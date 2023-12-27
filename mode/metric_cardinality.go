@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/pree-dew/metric-explorer/api_client/client_golang/api"
+	v1 "github.com/pree-dew/metric-explorer/api_client/client_golang/api/prometheus/v1"
 
 	apiclient "github.com/pree-dew/metric-explorer/api_client"
 )
