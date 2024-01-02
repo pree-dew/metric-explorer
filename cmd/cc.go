@@ -46,4 +46,5 @@ func init() {
 		"Specify the acceptable limit, if the cardinality execeeds beyond this then relative cardinality kicks in.")
 	ccCmd.PersistentFlags().StringVar(&c.DumpAs, "dump-as", "csv", "Dump format, allowed values csv, table")
 	ccCmd.PersistentFlags().StringArrayVar(&c.Label, "labels", []string{}, "Labels to consider for cardinality")
+	ccCmd.PersistentFlags().BoolVar(&c.DisableRelativeCardinality, "disable-relative-cardinality", false, "Disable the implicit behaviour of applying relative cardinality")
 }

@@ -13,15 +13,16 @@ import (
 )
 
 type CardinalityFlag struct {
-	Metric                  string
-	DumpAs                  string
-	Label                   []string
-	LabelCount              int
-	CardinalityPerDuration  int
-	AllowedCardinalityLimit int64
-	FilterLabel             string
-	Lag                     int
-	RelativeLabelNo         int
+	Metric                     string
+	DumpAs                     string
+	Label                      []string
+	LabelCount                 int
+	CardinalityPerDuration     int
+	AllowedCardinalityLimit    int64
+	FilterLabel                string
+	Lag                        int
+	RelativeLabelNo            int
+	DisableRelativeCardinality bool
 }
 
 type cardinalityDetails struct {
@@ -104,14 +105,13 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 	// use that as a filter in base metric to find cardinality contribution, if Cardinality
 	// is with in limit then no need to use filter
 	filter := ""
-	if int64(r.SeriesCountByMetricName[0].Value) > cFlag.AllowedCardinalityLimit {
-		filter = fmt.Sprintf(`%s=""`, focusLabel)
+	if (int64(r.SeriesCountByMetricName[0].Value) > cFlag.AllowedCardinalityLimit) && !cFlag.DisableRelativeCardinality {
+		cFlag.RelativeLabelNo -= 1
 		if len(r.SeriesCountByFocusLabelValue) < cFlag.RelativeLabelNo {
 			cFlag.RelativeLabelNo = len(r.SeriesCountByFocusLabelValue) - 1
-		} else {
-			cFlag.RelativeLabelNo -= 1
 		}
 
+		filter = fmt.Sprintf(`%s=""`, focusLabel)
 		if len(r.SeriesCountByFocusLabelValue) != 0 {
 			filter = fmt.Sprintf(`%s="%s"`, focusLabel, r.SeriesCountByFocusLabelValue[cFlag.RelativeLabelNo].Name)
 		}
