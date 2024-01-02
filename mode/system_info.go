@@ -69,7 +69,7 @@ func SystemInvoke(dataSource string, sFlag SystemFlag) {
 			l.topMetrics = append(l.topMetrics, metricSeriesCount{name: result.SeriesCountByMetricName[m].Name, series: mSeries, percentage: math.Round(percent*100) / 100})
 		}
 
-		dumpSystemView(l.topMetrics, sFlag.DumpAs)
+		dumpSystemView(l.totalSeries, l.topMetrics, sFlag.DumpAs)
 	}
 
 	if sFlag.ChurnRate != 0 {

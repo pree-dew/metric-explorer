@@ -181,9 +181,10 @@ func dumpCardinalityPer(metric string, cPer cardinalityPer, format string) {
 	fmt.Println()
 }
 
-func dumpSystemView(arr []metricSeriesCount, format string) {
+func dumpSystemView(totalSeries uint64, arr []metricSeriesCount, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Total Timeseries", totalSeries})
 	t.AppendHeader(table.Row{"Metric", "Cardinality", "Cardinality %"})
 	for i := range arr {
 		t.AppendRow([]interface{}{arr[i].name, arr[i].series, arr[i].percentage})
