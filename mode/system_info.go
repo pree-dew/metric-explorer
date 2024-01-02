@@ -2,6 +2,7 @@ package mode
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/pree-dew/metric-explorer/api_client/client_golang/api"
@@ -23,10 +24,12 @@ type SystemFlag struct {
 }
 
 type metricSeriesCount struct {
-	name   string
-	series int64
+	name       string
+	series     uint64
+	percentage float64
 }
 type systemInfo struct {
+	totalSeries      uint64
 	topMetrics       []metricSeriesCount
 	topQueries       []map[string]interface{}
 	ingestionRate    int
@@ -59,8 +62,11 @@ func SystemInvoke(dataSource string, sFlag SystemFlag) {
 			return
 		}
 
+		l.totalSeries = result.TotalSeries
 		for m := range result.SeriesCountByMetricName {
-			l.topMetrics = append(l.topMetrics, metricSeriesCount{name: result.SeriesCountByMetricName[m].Name, series: int64(result.SeriesCountByMetricName[m].Value)})
+			mSeries := result.SeriesCountByMetricName[m].Value
+			percent := (float64(mSeries) * 100) / float64(l.totalSeries)
+			l.topMetrics = append(l.topMetrics, metricSeriesCount{name: result.SeriesCountByMetricName[m].Name, series: mSeries, percentage: math.Round(percent*100) / 100})
 		}
 
 		dumpSystemView(l.topMetrics, sFlag.DumpAs)

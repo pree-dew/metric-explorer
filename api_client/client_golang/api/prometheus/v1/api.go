@@ -682,6 +682,7 @@ type queryResult struct {
 // TSDBResult contains the result from querying the tsdb endpoint.
 type TSDBResult struct {
 	HeadStats                   TSDBHeadStats `json:"headStats"`
+	TotalSeries                 uint64        `json:"totalSeries,omitempty"`
 	SeriesCountByMetricName     []Stat        `json:"seriesCountByMetricName"`
 	LabelValueCountByLabelName  []Stat        `json:"labelValueCountByLabelName"`
 	MemoryInBytesByLabelName    []Stat        `json:"memoryInBytesByLabelName"`
