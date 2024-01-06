@@ -26,7 +26,7 @@ type CardinalityFlag struct {
 }
 
 type cardinalityDetails struct {
-	cardinality int64
+	cardinality uint64
 	labelInfo   labelMap
 }
 
@@ -36,14 +36,14 @@ type RWMap struct {
 }
 
 // Get is a wrapper for getting the value from the underlying map
-func (r *RWMap) Get(key string) int64 {
+func (r *RWMap) Get(key string) uint64 {
 	r.RLock()
 	defer r.RUnlock()
 	return r.m[key]
 }
 
 // Set is a wrapper for setting the value of a key in the underlying map
-func (r *RWMap) Set(key string, val int64) {
+func (r *RWMap) Set(key string, val uint64) {
 	r.Lock()
 	defer r.Unlock()
 	r.m[key] = val
@@ -101,11 +101,23 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	// In case if series is incorrect
+	if len(r.SeriesCountByMetricName) == 0 {
+		fmt.Println("No series found")
+		return
+	}
+
+	cardinality := r.SeriesCountByMetricName[0].Value
+	if cFlag.DisableRelativeCardinality && cardinality > uint64(cFlag.AllowedCardinalityLimit) {
+		fmt.Println("Cardinality is greater than allowed limit and relative cardinality flag is disable, can't process")
+		return
+	}
+
 	// In case of high cardinality pick the filter variable with smallest Cardinality
 	// use that as a filter in base metric to find cardinality contribution, if Cardinality
 	// is with in limit then no need to use filter
 	filter := ""
-	if (int64(r.SeriesCountByMetricName[0].Value) > cFlag.AllowedCardinalityLimit) && !cFlag.DisableRelativeCardinality {
+	if (cardinality > uint64(cFlag.AllowedCardinalityLimit)) && !cFlag.DisableRelativeCardinality {
 		cFlag.RelativeLabelNo -= 1
 		if len(r.SeriesCountByFocusLabelValue) < cFlag.RelativeLabelNo {
 			cFlag.RelativeLabelNo = len(r.SeriesCountByFocusLabelValue) - 1
@@ -134,9 +146,14 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	if r.SeriesCountByFocusLabelValue[0].Value > uint64(cFlag.AllowedCardinalityLimit) {
+		fmt.Println("Cardinality is greater than allowed limit even after applying relative cardinality, use different label for relative cardinality, can't process")
+		return
+	}
+
 	// By default consider all labels for finding cardinality contribution
 	labelsToConsider := []string{}
-	cd.cardinality = int64(r.SeriesCountByMetricName[0].Value)
+	cd.cardinality = r.SeriesCountByMetricName[0].Value
 	for l := range r.LabelValueCountByLabelName {
 		if r.LabelValueCountByLabelName[l].Name == "__name__" {
 			continue
@@ -152,6 +169,13 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 
 	// create unique pairs as per label count
 	pairs := createPairs(labelsToConsider, cFlag.LabelCount)
+
+	// if label count < no of explicit labels provided then include
+	// a combination of all labels also
+	if len(cFlag.Label) != 0 && cFlag.LabelCount < len(cFlag.Label) {
+		pairs = append(pairs, strings.Join(labelsToConsider, ","))
+	}
+
 	cMap := &RWMap{m: cardinalityPer{}}
 	for p := range pairs {
 		wg.Add(1)
@@ -162,7 +186,7 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 				fmt.Println("Error while finding cardinality:", err)
 			}
 
-			per := (cd.cardinality - int64(r)) * 100 / cd.cardinality
+			per := (cd.cardinality - uint64(r)) * 100 / cd.cardinality
 
 			cMap.Set(pairs[p], per)
 		}(p)

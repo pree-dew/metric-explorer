@@ -15,11 +15,11 @@ var (
 	focusLabel      = "job"
 )
 
-type cardinalityPer map[string]int64
+type cardinalityPer map[string]uint64
 
 type stringIntMap struct {
 	key   string
-	value int64
+	value uint64
 }
 
 type labelInfo struct {
@@ -90,7 +90,7 @@ func sortLabelMap(labels labelMap) []stringIntMap {
 
 	i := 0
 	for k, v := range labels {
-		lc[i] = stringIntMap{k, int64(v.uniqueCount)}
+		lc[i] = stringIntMap{k, uint64(v.uniqueCount)}
 		i++
 	}
 
@@ -101,7 +101,7 @@ func sortLabelMap(labels labelMap) []stringIntMap {
 	return lc
 }
 
-func sortMap(m map[string]int64) []stringIntMap {
+func sortMap(m map[string]uint64) []stringIntMap {
 	lc := make([]stringIntMap, len(m))
 
 	i := 0
@@ -117,7 +117,7 @@ func sortMap(m map[string]int64) []stringIntMap {
 	return lc
 }
 
-func dumpCardinalityInfoPerLabel(metric string, cardinality int64, labels labelMap, cPer cardinalityPer, format string) {
+func dumpCardinalityInfoPerLabel(metric string, cardinality uint64, labels labelMap, cPer cardinalityPer, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
@@ -139,7 +139,7 @@ func dumpCardinalityInfoPerLabel(metric string, cardinality int64, labels labelM
 	fmt.Println()
 }
 
-func dumpCardinalityInfoWithoutLabels(metric string, cardinality int64, labels labelMap, format string) {
+func dumpCardinalityInfoWithoutLabels(metric string, cardinality uint64, labels labelMap, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
