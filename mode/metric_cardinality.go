@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pree-dew/metric-explorer/api_client/client_golang/api"
 	v1 "github.com/pree-dew/metric-explorer/api_client/client_golang/api/prometheus/v1"
@@ -181,7 +182,18 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
-			r, err := apiclient.FindCardinality(v1api, cFlag.Metric, cFlag.CardinalityPerDuration, cFlag.Lag, pairs[p])
+
+			// If the diff between current time and start of the day time in UTC is less than 12 hrs then use the diff instead of 12 hours
+			now := time.Now().UTC()
+			startOfDayTime := time.Date(
+				now.Year(), now.Month(),
+				now.Day(), 0, 0, 0, 0, time.UTC).Unix()
+			currentTime := now.Unix()
+			cardinalityDuration := int(currentTime - startOfDayTime)
+			if cardinalityDuration > cFlag.CardinalityPerDuration {
+				cardinalityDuration = cFlag.CardinalityPerDuration
+			}
+			r, err := apiclient.FindCardinality(v1api, cFlag.Metric, cardinalityDuration, cFlag.Lag, pairs[p])
 			if err != nil {
 				fmt.Println("Error while finding cardinality:", err)
 			}

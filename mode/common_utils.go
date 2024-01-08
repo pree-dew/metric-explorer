@@ -64,7 +64,7 @@ func dumpTopQueriesView(topQueries []map[string]interface{}, format string) {
 	fmt.Println()
 }
 
-func dumpCardinalityInfoWithLabels(metric string, cardinality int64, labels labelMap, labelValues map[string][]string, format string) {
+func dumpCardinalityInfoWithLabels(metric string, cardinality uint64, labels labelMap, labelValues map[string][]map[string]uint64, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
@@ -72,7 +72,14 @@ func dumpCardinalityInfoWithLabels(metric string, cardinality int64, labels labe
 	t.AppendHeader(table.Row{"Label", "Unique Value", "Label Values"})
 	t.AppendSeparator()
 	for k, v := range labels {
-		t.AppendRow([]interface{}{k, v.uniqueCount, strings.Join(labelValues[k], ",")})
+		lString := []string{}
+		for _, values := range labelValues[k] {
+			for lk, lv := range values {
+				lString = append(lString, fmt.Sprintf("%s - %d", lk, lv))
+			}
+		}
+
+		t.AppendRow([]interface{}{k, v.uniqueCount, strings.Join(lString, "\n")})
 	}
 
 	t.AppendSeparator()
@@ -127,6 +134,12 @@ func dumpCardinalityInfoPerLabel(metric string, cardinality uint64, labels label
 	lc := sortLabelMap(labels)
 	for _, v := range lc {
 		t.AppendRow([]interface{}{v.key, v.value, cPer[v.key]})
+	}
+
+	for label, value := range cPer {
+		if _, ok := labels[label]; !ok {
+			t.AppendRow([]interface{}{label, -1, value})
+		}
 	}
 
 	t.AppendSeparator()

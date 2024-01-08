@@ -29,10 +29,10 @@ type MetricFlag struct {
 }
 
 type metricInfo struct {
-	cardinality      int64
+	cardinality      uint64
 	scrapeInterval   int
 	labelInfo        labelMap
-	labelValues      map[string][]string
+	labelValues      map[string][]map[string]uint64
 	respTime         float32
 	loss             int
 	sampleReceived   int64
@@ -47,7 +47,7 @@ func MInfoInvoke(dataSource string, m MetricFlag) {
 	var (
 		wg    = &sync.WaitGroup{}
 		lock  = sync.RWMutex{}
-		mInfo = metricInfo{labelInfo: labelMap{}, labelValues: map[string][]string{}}
+		mInfo = metricInfo{labelInfo: labelMap{}, labelValues: map[string][]map[string]uint64{}}
 	)
 
 	client, err := api.NewClient(api.Config{
@@ -74,7 +74,7 @@ func MInfoInvoke(dataSource string, m MetricFlag) {
 			return
 		}
 
-		mInfo.cardinality = int64(r.SeriesCountByMetricName[0].Value)
+		mInfo.cardinality = r.SeriesCountByMetricName[0].Value
 		for l := range r.LabelValueCountByLabelName {
 			label := r.LabelValueCountByLabelName[l].Name
 			mInfo.labelInfo[label] = labelInfo{uniqueCount: int(r.LabelValueCountByLabelName[l].Value)}
@@ -89,15 +89,16 @@ func MInfoInvoke(dataSource string, m MetricFlag) {
 					return
 				}
 
-				labelValues := []string{}
+				labelValues := []map[string]uint64{}
 				for i := range r.SeriesCountByFocusLabelValue {
-					labelValues = append(labelValues, r.SeriesCountByFocusLabelValue[i].Name)
+					labelValues = append(labelValues, map[string]uint64{r.SeriesCountByFocusLabelValue[i].Name: r.SeriesCountByFocusLabelValue[i].Value})
 				}
 
 				lock.Lock()
 				mInfo.labelValues[label] = labelValues
 				lock.Unlock()
 			}()
+
 		}
 	}
 
