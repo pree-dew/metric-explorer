@@ -247,6 +247,38 @@ func ScrapeInterval(v1api v1.API, metric string) (int, error) {
 	return strconv.Atoi(values[0].Value)
 }
 
+func FindCardinality(v1api v1.API, metric string, duration, offset int, lPair string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
+	defer cancel()
+
+	params := queryParams{Metric: metric, Duration: duration, LabelPair: lPair}
+	query, err := createQuery(params, labelCardinalityTempl)
+	if err != nil {
+		return 0, err
+	}
+
+	r, _, err := v1api.Query(ctx, query, time.Now().Add(-time.Duration(offset)*time.Second))
+	if err != nil {
+		return 0, err
+	}
+
+	by, err := json.Marshal(r)
+	if err != nil {
+		return 0, err
+	}
+
+	values, err := UnmarshalJSON(by)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(values) == 0 {
+		return 0, nil
+	}
+
+	return strconv.Atoi(values[0].Value)
+}
+
 func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair string, templType string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
