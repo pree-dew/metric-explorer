@@ -13,9 +13,10 @@ var (
 	topN            = "20"
 	relativeLabelNo = 10
 	focusLabel      = "job"
+	drop            = "action"
 )
 
-type cardinalityPer map[string]uint64
+type labelsCardinalityInfo map[string]labelInfo
 
 type stringIntMap struct {
 	key   string
@@ -23,9 +24,10 @@ type stringIntMap struct {
 }
 
 type labelInfo struct {
-	uniqueCount    int
-	cardinalityPer int
-	values         []string
+	uniqueCount     int
+	cardinalityPer  int
+	values          []string
+	duplicateExists bool
 }
 
 type labelMap map[string]labelInfo
@@ -108,12 +110,12 @@ func sortLabelMap(labels labelMap) []stringIntMap {
 	return lc
 }
 
-func sortMap(m map[string]uint64) []stringIntMap {
+func sortMap(m labelsCardinalityInfo) []stringIntMap {
 	lc := make([]stringIntMap, len(m))
 
 	i := 0
 	for k, v := range m {
-		lc[i] = stringIntMap{k, v}
+		lc[i] = stringIntMap{k, uint64(v.uniqueCount)}
 		i++
 	}
 
@@ -124,21 +126,37 @@ func sortMap(m map[string]uint64) []stringIntMap {
 	return lc
 }
 
-func dumpCardinalityInfoPerLabel(metric string, cardinality uint64, labels labelMap, cPer cardinalityPer, format string) {
+func getHeaders(noOfLabels int, action string) table.Row {
+	if noOfLabels == 1 {
+		if action == "" {
+			return table.Row{"Label", "Unique Value", "Cardinality %"}
+		}
+
+		if action == drop {
+			return table.Row{"Label", "Unique Value", "Cardinality %", "Duplicate Labels Exists"}
+		}
+	}
+
+	if action == "" {
+		return table.Row{"Label", "Cardinality %"}
+	}
+
+	return table.Row{"Label", "Cardinality %", "Duplicate Labels Exists"}
+}
+
+func dumpCardinalityInfoPerLabel(metric string, cardinality uint64, labelInfo labelsCardinalityInfo, action, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
 	t.AppendHeader(table.Row{"Cardinality", cardinality})
-	t.AppendHeader(table.Row{"Label", "Unique Value", "Cardinality %"})
+	t.AppendHeader(getHeaders(1, action))
 	t.AppendSeparator()
-	lc := sortLabelMap(labels)
+	lc := sortMap(labelInfo)
 	for _, v := range lc {
-		t.AppendRow([]interface{}{v.key, v.value, cPer[v.key]})
-	}
-
-	for label, value := range cPer {
-		if _, ok := labels[label]; !ok {
-			t.AppendRow([]interface{}{label, -1, value})
+		if action == "" {
+			t.AppendRow([]interface{}{v.key, v.value, labelInfo[v.key].cardinalityPer})
+		} else {
+			t.AppendRow([]interface{}{v.key, v.value, labelInfo[v.key].cardinalityPer, labelInfo[v.key].duplicateExists})
 		}
 	}
 
@@ -174,15 +192,19 @@ func dumpCardinalityInfoWithoutLabels(metric string, cardinality uint64, labels 
 	fmt.Println()
 }
 
-func dumpCardinalityPer(metric string, cPer cardinalityPer, format string) {
+func dumpCardinalityPer(metric string, labelInfo labelsCardinalityInfo, action, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Cardinality % contribution"})
 	t.AppendSeparator()
-	t.AppendHeader(table.Row{"Label", "Unique Value"})
-	lc := sortMap(cPer)
+	t.AppendHeader(getHeaders(2, action))
+	lc := sortMap(labelInfo)
 	for _, v := range lc {
-		t.AppendRow([]interface{}{strings.ReplaceAll(v.key, ",", " -"), v.value})
+		if action == "" {
+			t.AppendRow([]interface{}{strings.ReplaceAll(v.key, ",", " -"), labelInfo[v.key].cardinalityPer})
+		} else {
+			t.AppendRow([]interface{}{strings.ReplaceAll(v.key, ",", " -"), labelInfo[v.key].cardinalityPer, labelInfo[v.key].duplicateExists})
+		}
 	}
 
 	t.SetStyle(table.StyleRounded)

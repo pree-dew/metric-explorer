@@ -23,6 +23,9 @@ type CardinalityFlag struct {
 	FilterLabel                string
 	Lag                        int
 	RelativeLabelNo            int
+	DropAction                 bool
+	AggregateAction            bool
+	SplitAction                bool
 	DisableRelativeCardinality bool
 }
 
@@ -33,29 +36,30 @@ type cardinalityDetails struct {
 
 type RWMap struct {
 	sync.RWMutex
-	m cardinalityPer
+	m labelsCardinalityInfo
 }
 
 // Get is a wrapper for getting the value from the underlying map
-func (r *RWMap) Get(key string) uint64 {
+func (r *RWMap) Get(key string) labelInfo {
 	r.RLock()
 	defer r.RUnlock()
 	return r.m[key]
 }
 
 // Set is a wrapper for setting the value of a key in the underlying map
-func (r *RWMap) Set(key string, val uint64) {
+func (r *RWMap) Set(key string, val labelInfo) {
 	r.Lock()
 	defer r.Unlock()
 	r.m[key] = val
 }
 
-// Inc increases the value in the RWMap for a key.
-// This is more pleasant than r.Set(key, r.Get(key)++)
-func (r *RWMap) Inc(key string) {
+// SetDropActionInfo is a wrapper for setting the value of a key in the underlying map
+func (r *RWMap) SetDropActionInfo(key string, labelExists bool) {
 	r.Lock()
 	defer r.Unlock()
-	r.m[key]++
+	v, _ := r.m[key]
+	v.duplicateExists = labelExists
+	r.m[key] = v
 }
 
 func createPairs(labels []string, labelCount int) []string {
@@ -147,6 +151,10 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	if len(r.SeriesCountByFocusLabelValue) == 0 {
+		return
+	}
+
 	if r.SeriesCountByFocusLabelValue[0].Value > uint64(cFlag.AllowedCardinalityLimit) {
 		fmt.Println("Cardinality is greater than allowed limit even after applying relative cardinality, use different label for relative cardinality, can't process")
 		return
@@ -170,6 +178,7 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 
 	// create unique pairs as per label count
 	pairs := createPairs(labelsToConsider, cFlag.LabelCount)
+	cMap := &RWMap{m: labelsCardinalityInfo{}}
 
 	// if label count < no of explicit labels provided then include
 	// a combination of all labels also
@@ -177,12 +186,10 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		pairs = append(pairs, strings.Join(labelsToConsider, ","))
 	}
 
-	cMap := &RWMap{m: cardinalityPer{}}
 	for p := range pairs {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
-
 			// If the diff between current time and start of the day time in UTC is less than 12 hrs then use the diff instead of 12 hours
 			now := time.Now().UTC()
 			startOfDayTime := time.Date(
@@ -193,24 +200,39 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 			if cardinalityDuration > cFlag.CardinalityPerDuration {
 				cardinalityDuration = cFlag.CardinalityPerDuration
 			}
-			r, err := apiclient.FindCardinality(v1api, cFlag.Metric, cardinalityDuration, cFlag.Lag, pairs[p])
+
+			r, err := apiclient.GetQueryResult(v1api, cFlag.Metric, cFlag.CardinalityPerDuration, cFlag.Lag, pairs[p], apiclient.LabelCardinalityStr)
 			if err != nil {
 				fmt.Println("Error while finding cardinality:", err)
 			}
 
-			per := (cd.cardinality - uint64(r)) * 100 / cd.cardinality
+			per := int((cd.cardinality - uint64(r)) * 100 / cd.cardinality)
 
-			cMap.Set(pairs[p], per)
+			cMap.Set(pairs[p], labelInfo{uniqueCount: cd.labelInfo[pairs[p]].uniqueCount, cardinalityPer: per})
+
+			if cFlag.DropAction {
+				r, err := apiclient.GetQueryResult(v1api, cFlag.Metric, cFlag.CardinalityPerDuration, cFlag.Lag, pairs[p], apiclient.DuplicatesLabelsStr)
+				if err != nil {
+					fmt.Println("Error while finding duplicate labels exists:", err)
+				}
+
+				cMap.SetDropActionInfo(pairs[p], r == 1)
+			}
 		}(p)
 
 	}
 
 	wg.Wait()
 
+	action := ""
+	if cFlag.DropAction {
+		action = drop
+	}
+
 	if cFlag.LabelCount == 1 {
-		dumpCardinalityInfoPerLabel(cFlag.Metric, cd.cardinality, cd.labelInfo, cMap.m, cFlag.DumpAs)
+		dumpCardinalityInfoPerLabel(cFlag.Metric, cd.cardinality, cMap.m, action, cFlag.DumpAs)
 	} else {
 		dumpCardinalityInfoWithoutLabels(cFlag.Metric, cd.cardinality, cd.labelInfo, cFlag.DumpAs)
-		dumpCardinalityPer(cFlag.Metric, cMap.m, cFlag.DumpAs)
+		dumpCardinalityPer(cFlag.Metric, cMap.m, action, cFlag.DumpAs)
 	}
 }

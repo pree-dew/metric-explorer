@@ -37,10 +37,27 @@ const (
 	metricResponseTimeTempl  = ""
 )
 
+const (
+	LabelCardinalityStr = "labelCardinality"
+	DuplicatesLabelsStr = "duplicateLabels"
+)
+
 const labelCardinalityTempl = `
 count (
-	count without ( {{.LabelPair}} ) (
+	group without ( {{.LabelPair}} ) (
 		count_over_time ( {{.Metric}}[{{.Duration}}s] )
+	)
+)
+`
+
+const duplicateLabelsExistsTempl = `
+sum( group without ( {{.LabelPair}} ) (
+	count_over_time( {{.Metric}}[{{.Duration}}s] )
+	)
+) 
+	!= bool 
+sum(  count without ( {{.LabelPair}} ) (
+	count_over_time( {{.Metric}}[{{.Duration}}s] )
 	)
 )
 `
@@ -126,6 +143,12 @@ func LoadTmpl(tmplStr string) (*template.Template, error) {
 
 func createQuery(params queryParams, templ string) (string, error) {
 	var q strings.Builder
+	switch templ {
+	case LabelCardinalityStr:
+		templ = labelCardinalityTempl
+	case DuplicatesLabelsStr:
+		templ = duplicateLabelsExistsTempl
+	}
 
 	if t, err := LoadTmpl(templ); err != nil {
 		return "", err
@@ -256,6 +279,38 @@ func FindCardinality(v1api v1.API, metric string, duration, offset int, lPair st
 	return strconv.Atoi(values[0].Value)
 }
 
+func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair string, templType string) (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
+	defer cancel()
+
+	params := queryParams{Metric: metric, Duration: duration, LabelPair: lPair}
+	query, err := createQuery(params, templType)
+	if err != nil {
+		return 0, err
+	}
+
+	r, _, err := v1api.Query(ctx, query, time.Now().Add(-time.Duration(offset)*time.Second))
+	if err != nil {
+		return 0, err
+	}
+
+	by, err := json.Marshal(r)
+	if err != nil {
+		return 0, err
+	}
+
+	values, err := UnmarshalJSON(by)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(values) == 0 {
+		return 0, nil
+	}
+
+	return strconv.ParseUint(values[0].Value, 10, 64)
+}
+
 func ResponseTime(v1api v1.API, metric string, duration, offset int) (float32, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
@@ -343,7 +398,7 @@ func ResetTime(v1api v1.API, metric string, duration, offset int) (int, error) {
 	return strconv.Atoi(values[0].Value)
 }
 
-func SampleReceived(v1api v1.API, metric string, duration, offset int) (int64, error) {
+func SampleReceived(v1api v1.API, metric string, duration, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -372,10 +427,10 @@ func SampleReceived(v1api v1.API, metric string, duration, offset int) (int64, e
 		return 0, nil
 	}
 
-	return strconv.ParseInt(values[0].Value, 10, 64)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
 
-func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (int64, error) {
+func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -404,7 +459,7 @@ func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (int64,
 		return 0, nil
 	}
 
-	return strconv.ParseInt(values[0].Value, 10, 64)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
 
 func LastLoss(v1api v1.API, metric string, duration, offset int) (int, error) {
@@ -535,7 +590,7 @@ func SystemChurnRate(v1api v1.API, offset int) (float64, error) {
 	return strconv.ParseFloat(values[0].Value, 64)
 }
 
-func SystemIngestionRate(v1api v1.API, offset int) (int, error) {
+func SystemIngestionRate(v1api v1.API, offset int) (float64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -558,10 +613,10 @@ func SystemIngestionRate(v1api v1.API, offset int) (int, error) {
 		return 0, nil
 	}
 
-	return strconv.Atoi(values[0].Value)
+	return strconv.ParseFloat(values[0].Value, 64)
 }
 
-func SystemActiveTimeSeries(v1api v1.API, offset int) (int, error) {
+func SystemActiveTimeSeries(v1api v1.API, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -584,5 +639,5 @@ func SystemActiveTimeSeries(v1api v1.API, offset int) (int, error) {
 		return 0, nil
 	}
 
-	return strconv.Atoi(values[0].Value)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
