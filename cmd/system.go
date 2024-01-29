@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"metric_explorer/mode"
+	"github.com/pree-dew/metric-explorer/mode"
 )
 
 var (

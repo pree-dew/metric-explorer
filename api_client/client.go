@@ -13,7 +13,7 @@ import (
 	"text/template"
 	"time"
 
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	v1 "github.com/pree-dew/metric-explorer/api_client/client_golang/api/prometheus/v1"
 )
 
 type value struct {

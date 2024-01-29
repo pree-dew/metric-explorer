@@ -5,30 +5,32 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/pree-dew/metric-explorer/api_client/client_golang/api"
+	v1 "github.com/pree-dew/metric-explorer/api_client/client_golang/api/prometheus/v1"
 
-	apiclient "metric_explorer/api_client"
+	apiclient "github.com/pree-dew/metric-explorer/api_client"
 )
 
 type CardinalityFlag struct {
-	Metric                  string
-	DumpAs                  string
-	Label                   []string
-	LabelCount              int
-	CardinalityPerDuration  int
-	AllowedCardinalityLimit int64
-	FilterLabel             string
-	Lag                     int
-	RelativeLabelNo         int
-	DropAction              bool
-	AggregateAction         bool
-	SplitAction             bool
+	Metric                     string
+	DumpAs                     string
+	Label                      []string
+	LabelCount                 int
+	CardinalityPerDuration     int
+	AllowedCardinalityLimit    int64
+	FilterLabel                string
+	Lag                        int
+	RelativeLabelNo            int
+	DropAction                 bool
+	AggregateAction            bool
+	SplitAction                bool
+	DisableRelativeCardinality bool
 }
 
 type cardinalityDetails struct {
-	cardinality int64
+	cardinality uint64
 	labelInfo   labelMap
 }
 
@@ -104,18 +106,29 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	// In case if series is incorrect
+	if len(r.SeriesCountByMetricName) == 0 {
+		fmt.Println("No series found")
+		return
+	}
+
+	cardinality := r.SeriesCountByMetricName[0].Value
+	if cFlag.DisableRelativeCardinality && cardinality > uint64(cFlag.AllowedCardinalityLimit) {
+		fmt.Println("Cardinality is greater than allowed limit and relative cardinality flag is disable, can't process")
+		return
+	}
+
 	// In case of high cardinality pick the filter variable with smallest Cardinality
 	// use that as a filter in base metric to find cardinality contribution, if Cardinality
 	// is with in limit then no need to use filter
 	filter := ""
-	if int64(r.SeriesCountByMetricName[0].Value) > cFlag.AllowedCardinalityLimit {
-		filter = fmt.Sprintf(`%s=""`, focusLabel)
+	if (cardinality > uint64(cFlag.AllowedCardinalityLimit)) && !cFlag.DisableRelativeCardinality {
+		cFlag.RelativeLabelNo -= 1
 		if len(r.SeriesCountByFocusLabelValue) < cFlag.RelativeLabelNo {
 			cFlag.RelativeLabelNo = len(r.SeriesCountByFocusLabelValue) - 1
-		} else {
-			cFlag.RelativeLabelNo -= 1
 		}
 
+		filter = fmt.Sprintf(`%s=""`, focusLabel)
 		if len(r.SeriesCountByFocusLabelValue) != 0 {
 			filter = fmt.Sprintf(`%s="%s"`, focusLabel, r.SeriesCountByFocusLabelValue[cFlag.RelativeLabelNo].Name)
 		}
@@ -138,9 +151,14 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	if r.SeriesCountByFocusLabelValue[0].Value > uint64(cFlag.AllowedCardinalityLimit) {
+		fmt.Println("Cardinality is greater than allowed limit even after applying relative cardinality, use different label for relative cardinality, can't process")
+		return
+	}
+
 	// By default consider all labels for finding cardinality contribution
 	labelsToConsider := []string{}
-	cd.cardinality = int64(r.SeriesCountByMetricName[0].Value)
+	cd.cardinality = r.SeriesCountByMetricName[0].Value
 	for l := range r.LabelValueCountByLabelName {
 		if r.LabelValueCountByLabelName[l].Name == "__name__" {
 			continue
@@ -157,16 +175,34 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 	// create unique pairs as per label count
 	pairs := createPairs(labelsToConsider, cFlag.LabelCount)
 	cMap := &RWMap{m: labelsCardinalityInfo{}}
+
+	// if label count < no of explicit labels provided then include
+	// a combination of all labels also
+	if len(cFlag.Label) != 0 && cFlag.LabelCount < len(cFlag.Label) {
+		pairs = append(pairs, strings.Join(labelsToConsider, ","))
+	}
+
 	for p := range pairs {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
+			// If the diff between current time and start of the day time in UTC is less than 12 hrs then use the diff instead of 12 hours
+			now := time.Now().UTC()
+			startOfDayTime := time.Date(
+				now.Year(), now.Month(),
+				now.Day(), 0, 0, 0, 0, time.UTC).Unix()
+			currentTime := now.Unix()
+			cardinalityDuration := int(currentTime - startOfDayTime)
+			if cardinalityDuration > cFlag.CardinalityPerDuration {
+				cardinalityDuration = cFlag.CardinalityPerDuration
+			}
+
 			r, err := apiclient.GetQueryResult(v1api, cFlag.Metric, cFlag.CardinalityPerDuration, cFlag.Lag, pairs[p], apiclient.LabelCardinalityStr)
 			if err != nil {
 				fmt.Println("Error while finding cardinality:", err)
 			}
 
-			per := (cd.cardinality - int64(r)) * 100 / cd.cardinality
+			per := int((cd.cardinality - uint64(r)) * 100 / cd.cardinality)
 
 			cMap.Set(pairs[p], labelInfo{uniqueCount: cd.labelInfo[pairs[p]].uniqueCount, cardinalityPer: per})
 

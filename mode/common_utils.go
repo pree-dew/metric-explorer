@@ -20,12 +20,12 @@ type labelsCardinalityInfo map[string]labelInfo
 
 type stringIntMap struct {
 	key   string
-	value int64
+	value uint64
 }
 
 type labelInfo struct {
 	uniqueCount     int
-	cardinalityPer  int64
+	cardinalityPer  int
 	values          []string
 	duplicateExists bool
 }
@@ -66,7 +66,7 @@ func dumpTopQueriesView(topQueries []map[string]interface{}, format string) {
 	fmt.Println()
 }
 
-func dumpCardinalityInfoWithLabels(metric string, cardinality int64, labels labelMap, labelValues map[string][]string, format string) {
+func dumpCardinalityInfoWithLabels(metric string, cardinality uint64, labels labelMap, labelValues map[string][]map[string]uint64, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
@@ -74,7 +74,14 @@ func dumpCardinalityInfoWithLabels(metric string, cardinality int64, labels labe
 	t.AppendHeader(table.Row{"Label", "Unique Value", "Label Values"})
 	t.AppendSeparator()
 	for k, v := range labels {
-		t.AppendRow([]interface{}{k, v.uniqueCount, strings.Join(labelValues[k], ",")})
+		lString := []string{}
+		for _, values := range labelValues[k] {
+			for lk, lv := range values {
+				lString = append(lString, fmt.Sprintf("%s - %d", lk, lv))
+			}
+		}
+
+		t.AppendRow([]interface{}{k, v.uniqueCount, strings.Join(lString, "\n")})
 	}
 
 	t.AppendSeparator()
@@ -92,7 +99,7 @@ func sortLabelMap(labels labelMap) []stringIntMap {
 
 	i := 0
 	for k, v := range labels {
-		lc[i] = stringIntMap{k, int64(v.uniqueCount)}
+		lc[i] = stringIntMap{k, uint64(v.uniqueCount)}
 		i++
 	}
 
@@ -108,7 +115,7 @@ func sortMap(m labelsCardinalityInfo) []stringIntMap {
 
 	i := 0
 	for k, v := range m {
-		lc[i] = stringIntMap{k, int64(v.uniqueCount)}
+		lc[i] = stringIntMap{k, uint64(v.uniqueCount)}
 		i++
 	}
 
@@ -137,7 +144,7 @@ func getHeaders(noOfLabels int, action string) table.Row {
 	return table.Row{"Label", "Cardinality %", "Duplicate Labels Exists"}
 }
 
-func dumpCardinalityInfoPerLabel(metric string, cardinality int64, labelInfo labelsCardinalityInfo, action, format string) {
+func dumpCardinalityInfoPerLabel(metric string, cardinality uint64, labelInfo labelsCardinalityInfo, action, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
@@ -163,7 +170,7 @@ func dumpCardinalityInfoPerLabel(metric string, cardinality int64, labelInfo lab
 	fmt.Println()
 }
 
-func dumpCardinalityInfoWithoutLabels(metric string, cardinality int64, labels labelMap, format string) {
+func dumpCardinalityInfoWithoutLabels(metric string, cardinality uint64, labels labelMap, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Metric", metric})
@@ -209,12 +216,13 @@ func dumpCardinalityPer(metric string, labelInfo labelsCardinalityInfo, action, 
 	fmt.Println()
 }
 
-func dumpSystemView(arr []metricSeriesCount, format string) {
+func dumpSystemView(totalSeries uint64, arr []metricSeriesCount, format string) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"Metric", "Cardinality"})
+	t.AppendHeader(table.Row{"Total Timeseries", totalSeries})
+	t.AppendHeader(table.Row{"Metric", "Cardinality", "Cardinality %"})
 	for i := range arr {
-		t.AppendRow([]interface{}{arr[i].name, arr[i].series})
+		t.AppendRow([]interface{}{arr[i].name, arr[i].series, arr[i].percentage})
 	}
 
 	t.SetStyle(table.StyleRounded)
