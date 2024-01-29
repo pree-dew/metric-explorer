@@ -151,6 +151,10 @@ func CardinalityInvoke(dataSource string, cFlag CardinalityFlag) {
 		return
 	}
 
+	if len(r.SeriesCountByFocusLabelValue) == 0 {
+		return
+	}
+
 	if r.SeriesCountByFocusLabelValue[0].Value > uint64(cFlag.AllowedCardinalityLimit) {
 		fmt.Println("Cardinality is greater than allowed limit even after applying relative cardinality, use different label for relative cardinality, can't process")
 		return

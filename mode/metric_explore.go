@@ -35,11 +35,11 @@ type metricInfo struct {
 	labelValues      map[string][]map[string]uint64
 	respTime         float32
 	loss             int
-	sampleReceived   int64
+	sampleReceived   uint64
 	iRate            float64
 	churnRate        float64
 	resetTime        int
-	activeTimeSeries int64
+	activeTimeSeries uint64
 	isSparse         bool
 }
 

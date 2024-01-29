@@ -279,7 +279,7 @@ func FindCardinality(v1api v1.API, metric string, duration, offset int, lPair st
 	return strconv.Atoi(values[0].Value)
 }
 
-func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair string, templType string) (int, error) {
+func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair string, templType string) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -308,7 +308,7 @@ func GetQueryResult(v1api v1.API, metric string, duration, offset int, lPair str
 		return 0, nil
 	}
 
-	return strconv.Atoi(values[0].Value)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
 
 func ResponseTime(v1api v1.API, metric string, duration, offset int) (float32, error) {
@@ -398,7 +398,7 @@ func ResetTime(v1api v1.API, metric string, duration, offset int) (int, error) {
 	return strconv.Atoi(values[0].Value)
 }
 
-func SampleReceived(v1api v1.API, metric string, duration, offset int) (int64, error) {
+func SampleReceived(v1api v1.API, metric string, duration, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -427,10 +427,10 @@ func SampleReceived(v1api v1.API, metric string, duration, offset int) (int64, e
 		return 0, nil
 	}
 
-	return strconv.ParseInt(values[0].Value, 10, 64)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
 
-func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (int64, error) {
+func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -459,7 +459,7 @@ func ActiveTimeSeries(v1api v1.API, metric string, duration, offset int) (int64,
 		return 0, nil
 	}
 
-	return strconv.ParseInt(values[0].Value, 10, 64)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }
 
 func LastLoss(v1api v1.API, metric string, duration, offset int) (int, error) {
@@ -590,7 +590,7 @@ func SystemChurnRate(v1api v1.API, offset int) (float64, error) {
 	return strconv.ParseFloat(values[0].Value, 64)
 }
 
-func SystemIngestionRate(v1api v1.API, offset int) (int, error) {
+func SystemIngestionRate(v1api v1.API, offset int) (float64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -613,10 +613,10 @@ func SystemIngestionRate(v1api v1.API, offset int) (int, error) {
 		return 0, nil
 	}
 
-	return strconv.Atoi(values[0].Value)
+	return strconv.ParseFloat(values[0].Value, 64)
 }
 
-func SystemActiveTimeSeries(v1api v1.API, offset int) (int, error) {
+func SystemActiveTimeSeries(v1api v1.API, offset int) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 	defer cancel()
 
@@ -639,5 +639,5 @@ func SystemActiveTimeSeries(v1api v1.API, offset int) (int, error) {
 		return 0, nil
 	}
 
-	return strconv.Atoi(values[0].Value)
+	return strconv.ParseUint(values[0].Value, 10, 64)
 }

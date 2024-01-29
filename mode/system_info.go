@@ -32,9 +32,9 @@ type systemInfo struct {
 	totalSeries      uint64
 	topMetrics       []metricSeriesCount
 	topQueries       []map[string]interface{}
-	ingestionRate    int
+	ingestionRate    float64
 	churnRate        float64
-	activeTimeSeries int
+	activeTimeSeries uint64
 	alertRules       int32
 }
 
