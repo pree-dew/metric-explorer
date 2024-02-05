@@ -180,3 +180,15 @@ After finding that cardinality is the problem, we have to find/investigate which
 ```shell
 ./bin/metric-explorer cc http_request_total --config example/sample.yaml --filter-label=cluster --label-count=2 --dump-as=table
 ```
+
+**Use Case 4**: Find out dropping a label or pair of labels is going to result into duplicates or not
+
+```shell
+./bin/metric-explorer cc dropmetric --config  example/sample.yaml 
+```
+To find for specific labels
+
+```shell
+./bin/metric-explorer cc dropmetric --config  example/sample.yaml  --labels=pod --labels=host --labels=instance
+```
+
