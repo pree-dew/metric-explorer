@@ -184,11 +184,11 @@ After finding that cardinality is the problem, we have to find/investigate which
 **Use Case 4**: Find out dropping a label or pair of labels is going to result into duplicates or not
 
 ```shell
-./bin/metric-explorer cc dropmetric --config  example/sample.yaml 
+./bin/metric-explorer cc drop metric --config  example/sample.yaml 
 ```
 To find for specific labels
 
 ```shell
-./bin/metric-explorer cc dropmetric --config  example/sample.yaml  --labels=pod --labels=host --labels=instance
+./bin/metric-explorer cc drop metric --config  example/sample.yaml  --labels=pod --labels=host --labels=instance
 ```
 
